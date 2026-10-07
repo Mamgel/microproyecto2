@@ -1,0 +1,28 @@
+# Vagrant
+.vagrant/
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+
+# Ansible
+ansible/inventory.ini
+*.retry
+
+# SSH keys
+*.pem
+*.pub
+id_rsa*
+azure_key*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credenciales
+*.env.local
+secrets.yml
