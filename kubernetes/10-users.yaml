@@ -1,0 +1,59 @@
+# users-service: Deployment (2 replicas) + Service ClusterIP (puerto 3001)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-service
+  namespace: microapp
+  labels: {app: users-service}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: users-service}
+  template:
+    metadata:
+      labels: {app: users-service}
+    spec:
+      restartPolicy: Always
+      initContainers:
+        - name: esperar-db            
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z users-db 3306; do echo esperando users-db; sleep 3; done"]
+      containers:
+        - name: users-service
+          image: mamgel/usuarios_servicio:1.1
+          ports:
+            - containerPort: 3001
+          env:
+            - {name: PORT, value: "3001"}
+            - {name: DB_HOST, value: "users-db"}
+            - {name: DB_USER, value: "root"}
+            - {name: DB_NAME, value: "UsersDatabase"}
+            - {name: CONSUL_HOST, value: "consul"}
+            - {name: CONSUL_PORT, value: "8500"}
+            - {name: CONSUL_HTTP_ADDR, value: "consul:8500"}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: app-secrets, key: DB_PASSWORD}
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef: {name: app-secrets, key: SECRET_KEY}
+          readinessProbe:
+            httpGet: {path: /healthcheck, port: 3001}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthcheck, port: 3001}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-svc
+  namespace: microapp
+spec:
+  type: ClusterIP
+  selector: {app: users-service}
+  ports:
+    - port: 3001
+      targetPort: 3001

@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: microapp
+resources:
+  - 00-namespace.yaml
+  - 01-secret.yaml
+  - 02-consul.yaml
+  - 03-users-db.yaml
+  - 04-products-db.yaml
+  - 05-orders-db.yaml
+  - 10-users.yaml
+  - 11-products.yaml
+  - 12-orders.yaml
+  - 20-ingress.yaml
+configMapGenerator:
+  - name: users-sql
+    files: [sql/users.sql]
+  - name: products-sql
+    files: [sql/products.sql]
+  - name: orders-sql
+    files: [sql/orders.sql]

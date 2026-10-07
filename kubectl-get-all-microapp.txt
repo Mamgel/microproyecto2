@@ -1,0 +1,43 @@
+NAME                                    READY   STATUS    RESTARTS   AGE
+pod/consul-5db9996f55-z8wpx             1/1     Running   0          4h46m
+pod/orders-db-79f84994f-nxqgl           1/1     Running   0          4h46m
+pod/orders-service-64d546f576-2rnr9     1/1     Running   0          4h46m
+pod/orders-service-64d546f576-7rql9     1/1     Running   0          4h46m
+pod/orders-service-64d546f576-gvns9     1/1     Running   0          10m
+pod/orders-service-64d546f576-k7fgc     1/1     Running   0          10m
+pod/products-db-655dfffdf4-tx2b8        1/1     Running   0          4h46m
+pod/products-service-7b9dd98f8d-5rl4f   1/1     Running   0          4h46m
+pod/products-service-7b9dd98f8d-x5xz6   1/1     Running   0          4h46m
+pod/users-db-fbb7b4d67-czrhs            1/1     Running   0          4h46m
+pod/users-service-67f6cd7776-6lxkb      1/1     Running   0          4h46m
+pod/users-service-67f6cd7776-cfgpc      1/1     Running   0          4h46m
+
+NAME                   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
+service/consul         ClusterIP   10.0.135.255   <none>        8500/TCP   4h46m
+service/orders-db      ClusterIP   10.0.172.214   <none>        3306/TCP   4h46m
+service/orders-svc     ClusterIP   10.0.79.111    <none>        3003/TCP   4h46m
+service/products-db    ClusterIP   10.0.121.49    <none>        3306/TCP   4h46m
+service/products-svc   ClusterIP   10.0.108.67    <none>        3002/TCP   4h46m
+service/users-db       ClusterIP   10.0.215.51    <none>        3306/TCP   4h46m
+service/users-svc      ClusterIP   10.0.83.188    <none>        3001/TCP   4h46m
+
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/consul             1/1     1            1           4h46m
+deployment.apps/orders-db          1/1     1            1           4h46m
+deployment.apps/orders-service     4/4     4            4           4h46m
+deployment.apps/products-db        1/1     1            1           4h46m
+deployment.apps/products-service   2/2     2            2           4h46m
+deployment.apps/users-db           1/1     1            1           4h46m
+deployment.apps/users-service      2/2     2            2           4h46m
+
+NAME                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/consul-5db9996f55             1         1         1       4h46m
+replicaset.apps/orders-db-79f84994f           1         1         1       4h46m
+replicaset.apps/orders-service-64d546f576     4         4         4       4h46m
+replicaset.apps/products-db-655dfffdf4        1         1         1       4h46m
+replicaset.apps/products-service-7b9dd98f8d   2         2         2       4h46m
+replicaset.apps/users-db-fbb7b4d67            1         1         1       4h46m
+replicaset.apps/users-service-67f6cd7776      2         2         2       4h46m
+
+NAME                                         CLASS   HOSTS   ADDRESS        PORTS   AGE
+ingress.networking.k8s.io/microapp-ingress   nginx   *       52.252.236.4   80      4h46m

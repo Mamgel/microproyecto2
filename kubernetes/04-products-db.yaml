@@ -1,0 +1,56 @@
+# Base de datos MySQL de products-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: products-db
+  namespace: microapp
+  labels: {app: products-db}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: products-db}
+  template:
+    metadata:
+      labels: {app: products-db}
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_DATABASE
+              value: "ProductsDatabase"
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: app-secrets, key: MYSQL_ROOT_PASSWORD}
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "mysqladmin ping -h 127.0.0.1 -uroot -p$MYSQL_ROOT_PASSWORD"]
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 20
+          volumeMounts:
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+            - name: data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: initdb
+          configMap:
+            name: products-sql
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: products-db
+  namespace: microapp
+spec:
+  type: ClusterIP
+  selector: {app: products-db}
+  ports:
+    - port: 3306
+      targetPort: 3306

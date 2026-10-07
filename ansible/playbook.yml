@@ -1,0 +1,137 @@
+---
+# ============================================================
+# Esperar a que las VMs recién creadas estén listas
+# ============================================================
+- name: Esperar a que las VMs respondan
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Esperar conexión SSH
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
+    - name: Esperar a que cloud-init termine (evita que apt esté bloqueado)
+      ansible.builtin.command: cloud-init status --wait
+      changed_when: false
+      failed_when: false
+
+# ============================================================
+# vm-microservices -> Instalar docker e iniciar  microservicios
+# ============================================================
+- name: Configurar vm-microservices
+  hosts: microservices
+  become: true
+  tasks:
+    - name: Instalar paquetes base
+      ansible.builtin.apt:
+        name: [ca-certificates, curl]
+        state: present
+        update_cache: true
+
+    - name: Crear carpeta para llaves de repositorios
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Descargar llave GPG oficial de Docker
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Agregar repositorio oficial de Docker
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu jammy stable"
+        filename: docker
+        state: present
+
+    - name: Instalar Docker Engine y Docker Compose
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
+        state: present
+        update_cache: true
+
+    - name: Docker activo y habilitado al inicio del sistema
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Permitir que azureuser use docker sin sudo
+      ansible.builtin.user:
+        name: azureuser
+        groups: docker
+        append: true
+
+    - name: Crear carpeta de la aplicación
+      ansible.builtin.file:
+        path: /opt/microapp
+        state: directory
+        mode: "0755"
+
+    - name: Copiar compose, archivos .env y scripts SQL
+      ansible.builtin.copy:
+        src: "files/{{ item }}"
+        dest: "/opt/microapp/{{ item }}"
+        mode: "0644"
+      loop:
+        - docker-compose.yml
+        - users.sql
+        - products.sql
+        - orders.sql
+        - bases.env
+        - front.env
+        - users.env
+        - products.env
+        - ordenes.env
+
+    - name: Descargar imágenes y levantar la aplicación
+      ansible.builtin.command: docker compose up -d --wait --wait-timeout 300
+      args:
+        chdir: /opt/microapp
+      register: compose
+      changed_when: "'Started' in compose.stderr or 'Recreated' in compose.stderr"
+
+    - name: Ver contenedores corriendo
+      ansible.builtin.command: docker ps
+      register: dps
+      changed_when: false
+
+    - name: Resultado de docker ps
+      ansible.builtin.debug:
+        var: dps.stdout_lines
+
+# ============================================================
+# vm-haproxy -> instalar HAProxy 
+# ============================================================
+- name: Configurar vm-haproxy
+  hosts: haproxy
+  become: true
+  tasks:
+    - name: Instalar HAProxy
+      ansible.builtin.apt:
+        name: haproxy
+        state: present
+        update_cache: true
+
+    - name: Copiar haproxy.cfg (se valida antes de reemplazar el archivo)
+      ansible.builtin.copy:
+        src: files/haproxy.cfg
+        dest: /etc/haproxy/haproxy.cfg
+        mode: "0644"
+        validate: haproxy -c -f %s
+      notify: Reiniciar HAProxy
+
+    - name: HAProxy activo y habilitado al inicio del sistema
+      ansible.builtin.systemd:
+        name: haproxy
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Reiniciar HAProxy
+      ansible.builtin.systemd:
+        name: haproxy
+        state: restarted

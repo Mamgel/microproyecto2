@@ -1,0 +1,56 @@
+# Base de datos MySQL de users-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-db
+  namespace: microapp
+  labels: {app: users-db}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: users-db}
+  template:
+    metadata:
+      labels: {app: users-db}
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_DATABASE
+              value: "UsersDatabase"
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: app-secrets, key: MYSQL_ROOT_PASSWORD}
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "mysqladmin ping -h 127.0.0.1 -uroot -p$MYSQL_ROOT_PASSWORD"]
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 20
+          volumeMounts:
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+            - name: data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: initdb
+          configMap:
+            name: users-sql
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-db
+  namespace: microapp
+spec:
+  type: ClusterIP
+  selector: {app: users-db}
+  ports:
+    - port: 3306
+      targetPort: 3306

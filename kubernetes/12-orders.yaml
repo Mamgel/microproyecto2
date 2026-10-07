@@ -1,0 +1,60 @@
+# orders-service: Deployment (2 replicas) + Service ClusterIP (puerto 3003)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-service
+  namespace: microapp
+  labels: {app: orders-service}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: orders-service}
+  template:
+    metadata:
+      labels: {app: orders-service}
+    spec:
+      restartPolicy: Always
+      initContainers:
+        - name: esperar-db     
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z orders-db 3306; do echo esperando orders-db; sleep 3; done"]
+      containers:
+        - name: orders-service
+          image: mamgel/ordenes_servicio:1.1
+          ports:
+            - containerPort: 3003
+          env:
+            - {name: PORT, value: "3003"}
+            - {name: DB_HOST, value: "orders-db"}
+            - {name: DB_USER, value: "root"}
+            - {name: DB_NAME, value: "OrdersDatabase"}
+            - {name: CONSUL_HOST, value: "consul"}
+            - {name: CONSUL_PORT, value: "8500"}
+            - {name: CONSUL_HTTP_ADDR, value: "consul:8500"}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: app-secrets, key: DB_PASSWORD}
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef: {name: app-secrets, key: SECRET_KEY}
+            - {name: PRODUCTS_SERVICE_URL, value: "http://products-svc:3002"}
+          readinessProbe:
+            httpGet: {path: /healthcheck, port: 3003}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthcheck, port: 3003}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-svc
+  namespace: microapp
+spec:
+  type: ClusterIP
+  selector: {app: orders-service}
+  ports:
+    - port: 3003
+      targetPort: 3003

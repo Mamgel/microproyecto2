@@ -1,0 +1,59 @@
+# products-service: Deployment (2 replicas) + Service ClusterIP (puerto 3002)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: products-service
+  namespace: microapp
+  labels: {app: products-service}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: products-service}
+  template:
+    metadata:
+      labels: {app: products-service}
+    spec:
+      restartPolicy: Always
+      initContainers:
+        - name: esperar-db       
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z products-db 3306; do echo esperando products-db; sleep 3; done"]
+      containers:
+        - name: products-service
+          image: mamgel/productos_servicio:1.1
+          ports:
+            - containerPort: 3002
+          env:
+            - {name: PORT, value: "3002"}
+            - {name: DB_HOST, value: "products-db"}
+            - {name: DB_USER, value: "root"}
+            - {name: DB_NAME, value: "ProductsDatabase"}
+            - {name: CONSUL_HOST, value: "consul"}
+            - {name: CONSUL_PORT, value: "8500"}
+            - {name: CONSUL_HTTP_ADDR, value: "consul:8500"}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: app-secrets, key: DB_PASSWORD}
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef: {name: app-secrets, key: SECRET_KEY}
+          readinessProbe:
+            httpGet: {path: /healthcheck, port: 3002}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthcheck, port: 3002}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: products-svc
+  namespace: microapp
+spec:
+  type: ClusterIP
+  selector: {app: products-service}
+  ports:
+    - port: 3002
+      targetPort: 3002
